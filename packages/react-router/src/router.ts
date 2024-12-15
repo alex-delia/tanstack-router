@@ -314,6 +314,14 @@ export interface RouterOptions<
    */
   defaultViewTransition?: boolean | ViewTransitionOptions
   /**
+   * The default `hashScrollIntoView` a route should use if no hashScrollIntoView is provided while navigating
+   *
+   * See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) for more information on `ScrollIntoViewOptions`.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulthashscrollintoview-property)
+   */
+  defaultHashScrollIntoView?: boolean | ScrollIntoViewOptions
+  /**
    * @default 'fuzzy'
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#notfoundmode-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#the-notfoundmode-option)
@@ -536,6 +544,7 @@ export interface BuildNextOptions {
   }
   from?: string
   _fromLocation?: ParsedLocation
+  href?: string
 }
 
 export interface MatchedRoutesResult {
@@ -1808,7 +1817,7 @@ export class Router<
       this.load()
     } else {
       // eslint-disable-next-line prefer-const
-      let { maskedLocation, ...nextHistory } = next
+      let { maskedLocation, hashScrollIntoView, ...nextHistory } = next
 
       if (maskedLocation) {
         nextHistory = {
@@ -1838,6 +1847,9 @@ export class Router<
         }
       }
 
+      nextHistory.state.__hashScrollIntoViewOptions =
+        hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true
+
       this.shouldViewTransition = viewTransition
 
       this.history[next.replace ? 'replace' : 'push'](
@@ -1859,11 +1871,12 @@ export class Router<
   buildAndCommitLocation = ({
     replace,
     resetScroll,
+    hashScrollIntoView,
     viewTransition,
     ignoreBlocker,
+    href,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
-    const href = (rest as any).href
     if (href) {
       const parsed = parseHref(href, {})
       rest.to = parsed.pathname
@@ -1881,33 +1894,29 @@ export class Router<
       viewTransition,
       replace,
       resetScroll,
+      hashScrollIntoView,
       ignoreBlocker,
     })
   }
 
-  navigate: NavigateFn = ({ to, ...rest }) => {
-    // If this link simply reloads the current route,
-    // make sure it has a new key so it will trigger a data refresh
-
-    // If this `to` is a valid external URL, return
-    // null for LinkUtils
-    const toString = String(to)
-    let isExternal
-
-    try {
-      new URL(`${toString}`)
-      isExternal = true
-    } catch (e) {}
-
-    invariant(
-      !isExternal,
-      'Attempting to navigate to external url with router.navigate!',
-    )
+  navigate: NavigateFn = ({ to, reloadDocument, href, ...rest }) => {
+    if (reloadDocument) {
+      if (!href) {
+        const location = this.buildLocation({ to, ...rest } as any)
+        href = location.href
+      }
+      if (rest.replace) {
+        window.location.replace(href)
+      } else {
+        window.location.href = href
+      }
+      return
+    }
 
     return this.buildAndCommitLocation({
       ...rest,
+      href,
       to: to as string,
-      // to: toString,
     })
   }
 
@@ -2041,7 +2050,7 @@ export class Router<
             redirect = err
             if (!this.isServer) {
               this.navigate({
-                ...err,
+                ...redirect,
                 replace: true,
                 ignoreBlocker: true,
               })
@@ -2194,7 +2203,11 @@ export class Router<
     }
 
     const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
-      if (isResolvedRedirect(err)) throw err
+      if (isResolvedRedirect(err)) {
+        if (!err.reloadDocument) {
+          throw err
+        }
+      }
 
       if (isRedirect(err) || isNotFound(err)) {
         updateMatch(match.id, (prev) => ({
@@ -2877,6 +2890,9 @@ export class Router<
       return matches
     } catch (err) {
       if (isRedirect(err)) {
+        if (err.reloadDocument) {
+          return undefined
+        }
         return await this.preloadRoute({
           ...(err as any),
           _fromLocation: next,
@@ -3041,7 +3057,7 @@ export class Router<
           ? `; console.info(\`Injected From Server:
 ${script}\`)`
           : ''
-      }; __TSR__.cleanScripts()</script>`,
+      }; if (typeof __TSR__ !== 'undefined') __TSR__.cleanScripts()</script>`,
     )
   }
 

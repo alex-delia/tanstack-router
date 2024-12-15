@@ -210,6 +210,10 @@ export type NavigateOptions<
 > = ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & NavigateOptionProps
 
 export interface NavigateOptionProps {
+  // if set to `true`, the router will scroll the element with an id matching the hash into view with default ScrollIntoViewOptions.
+  // if set to `false`, the router will not scroll the element with an id matching the hash into view.
+  // if set to `ScrollIntoViewOptions`, the router will scroll the element with an id matching the hash into view with the provided options.
+  hashScrollIntoView?: boolean | ScrollIntoViewOptions
   // `replace` is a boolean that determines whether the navigation should replace the current history entry or push a new one.
   replace?: boolean
   resetScroll?: boolean
@@ -219,6 +223,8 @@ export interface NavigateOptionProps {
   // if set to `ViewTransitionOptions`, the router will pass the `types` field to document.startViewTransition({update: fn, types: viewTransition.types}) call
   viewTransition?: boolean | ViewTransitionOptions
   ignoreBlocker?: boolean
+  reloadDocument?: boolean
+  href?: string
 }
 
 export type ToOptions<
@@ -607,6 +613,7 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
+    hashScrollIntoView,
     replace,
     startTransition,
     resetScroll,
@@ -643,6 +650,9 @@ export function useLinkProps<
   // null for LinkUtils
 
   const type: 'internal' | 'external' = React.useMemo(() => {
+    if (rest.reloadDocument) {
+      return 'external'
+    }
     try {
       new URL(`${to}`)
       return 'external'
@@ -801,6 +811,7 @@ export function useLinkProps<
         ...options,
         replace,
         resetScroll,
+        hashScrollIntoView,
         startTransition,
         viewTransition,
         ignoreBlocker,
@@ -1001,7 +1012,7 @@ export type CreateLinkProps = LinkProps<
 >
 
 export type LinkComponent<TComp> = <
-  TRouter extends RegisteredRouter = RegisteredRouter,
+  TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,

@@ -15,6 +15,7 @@ import type {
 export interface CommitLocationOptions {
   replace?: boolean
   resetScroll?: boolean
+  hashScrollIntoView?: boolean | ScrollIntoViewOptions
   viewTransition?: boolean | ViewTransitionOptions
   /**
    * @deprecated All navigations use React transitions under the hood now
@@ -38,7 +39,7 @@ export type NavigateFn = <
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) => Promise<void>
+) => Promise<void> | void
 
 export type BuildLocationFn = <
   TRouter extends RegisteredRouter,

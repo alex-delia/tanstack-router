@@ -7,7 +7,11 @@ import {
   createRouter,
   linkOptions,
 } from '../src'
-import type { CreateLinkProps, SearchSchemaInput } from '../src'
+import type {
+  CreateLinkProps,
+  ResolveRelativePath,
+  SearchSchemaInput,
+} from '../src'
 
 const rootRoute = createRootRoute({
   validateSearch: (): { rootPage?: number } => ({ rootPage: 0 }),
@@ -433,7 +437,6 @@ test('when navigating from a route with no params and no search to the root', ()
       | '../'
       | './'
       | '/'
-      | ''
       | '/invoices/'
       | '/invoices/$invoiceId/'
       | '/invoices/$invoiceId/edit/'
@@ -472,10 +475,8 @@ test('when navigating from a route with no params and no search to the root', ()
       | '.'
       | '..'
       | '../'
-      | '../'
       | './'
       | '/'
-      | ''
       | '/invoices'
       | '/invoices/'
       | '/invoices/$invoiceId'
@@ -721,7 +722,7 @@ test('when navigating from a route with no params and no search to the current r
 })
 
 test('when navigating from a route with no params and no search to the parent route', () => {
-  expectTypeOf(Link<DefaultRouter, '/posts', '../'>)
+  expectTypeOf(Link<DefaultRouter, '/posts', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -733,11 +734,11 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices/$invoiceId/details/$detailId'
       | '../invoices/$invoiceId/details/$detailId/lines'
       | '../invoices'
-      | '../'
+      | '..'
       | undefined
     >()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts', '../'>)
+  expectTypeOf(Link<DefaultRouterObjects, '/posts', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -749,7 +750,7 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices/$invoiceId/details/$detailId'
       | '../invoices/$invoiceId/details/$detailId/lines'
       | '../invoices'
-      | '../'
+      | '..'
       | undefined
     >()
 
@@ -769,7 +770,7 @@ test('when navigating from a route with no params and no search to the parent ro
       | undefined
     >()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '../'>)
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -781,11 +782,11 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices/$invoiceId/details/$detailId'
       | '../invoices/$invoiceId/details/$detailId/lines'
       | '../invoices'
-      | '../'
+      | '..'
       | undefined
     >()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts', '../'>)
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -806,6 +807,7 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../invoices'
       | '../invoices/'
       | '../'
+      | '..'
       | undefined
     >()
 })
@@ -3839,6 +3841,221 @@ test('when passing a component with props to createLink and navigating to the ro
     }>()
 
   createLink((props) => expectTypeOf(props).toEqualTypeOf<CreateLinkProps>())
+})
+
+test('ResolveRelativePath', () => {
+  expectTypeOf<ResolveRelativePath<'/', '/posts'>>().toEqualTypeOf<'/posts'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '..'>
+  >().toEqualTypeOf<'/posts/1'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments/', '..'>
+  >().toEqualTypeOf<'/posts/1/'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '../..'>
+  >().toEqualTypeOf<'/posts'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments/', '../..'>
+  >().toEqualTypeOf<'/posts/'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '../../..'>
+  >().toEqualTypeOf<'/'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', './1'>
+  >().toEqualTypeOf<'/posts/1/comments/1'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', './1/2'>
+  >().toEqualTypeOf<'/posts/1/comments/1/2'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '../edit'>
+  >().toEqualTypeOf<'/posts/1/edit'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments/', '../edit'>
+  >().toEqualTypeOf<'/posts/1/edit'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', '1'>
+  >().toEqualTypeOf<'/posts/1/comments/1'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', './1'>
+  >().toEqualTypeOf<'/posts/1/comments/1'>()
+
+  expectTypeOf<
+    ResolveRelativePath<'/posts/1/comments', './1/2'>
+  >().toEqualTypeOf<'/posts/1/comments/1/2'>()
+})
+
+test('navigation edge cases', () => {
+  expectTypeOf(Link<DefaultRouter, '/', '..'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/', '../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/', '..'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/', '..' | '../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<DefaultRouter, '', '..'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '', '../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '', '..'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '', '..' | '../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<DefaultRouter, '/posts', '...'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts', '.../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '...'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts', '...' | '.../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<DefaultRouter, '/posts/$postId', '../../..'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/$postId', '../../../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/$postId', '../../..'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(
+    Link<
+      RouterPreserveTrailingSlashes,
+      '/posts/$postId',
+      '../../..' | '../../../'
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(Link<DefaultRouter, '/posts/$postId', '../..'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../..'
+      | '../../posts'
+      | '../../posts/$postId'
+      | '../../invoices'
+      | '../../invoices/$invoiceId'
+      | '../../invoices/$invoiceId/edit'
+      | '../../invoices/$invoiceId/details'
+      | '../../invoices/$invoiceId/details/$detailId'
+      | '../../invoices/$invoiceId/details/$detailId/lines'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/$postId', '../../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../../'
+      | '../../posts/'
+      | '../../posts/$postId/'
+      | '../../invoices/'
+      | '../../invoices/$invoiceId/'
+      | '../../invoices/$invoiceId/edit/'
+      | '../../invoices/$invoiceId/details/'
+      | '../../invoices/$invoiceId/details/$detailId/'
+      | '../../invoices/$invoiceId/details/$detailId/lines/'
+      | undefined
+    >()
+
+  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/$postId', '../../'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../..'
+      | '../../posts'
+      | '../../posts/$postId'
+      | '../../invoices'
+      | '../../invoices/$invoiceId'
+      | '../../invoices/$invoiceId/edit'
+      | '../../invoices/$invoiceId/details'
+      | '../../invoices/$invoiceId/details/$detailId'
+      | '../../invoices/$invoiceId/details/$detailId/lines'
+      | undefined
+    >()
+
+  expectTypeOf(
+    Link<RouterPreserveTrailingSlashes, '/posts/$postId', '../../' | '../..'>,
+  )
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../..'
+      | '../../'
+      | '../../posts'
+      | '../../posts/$postId'
+      | '../../invoices'
+      | '../../invoices/$invoiceId'
+      | '../../invoices/$invoiceId/edit'
+      | '../../invoices/$invoiceId/details'
+      | '../../invoices/$invoiceId/details/$detailId'
+      | '../../invoices/$invoiceId/details/$detailId/lines'
+      | '../../posts/'
+      | '../../posts/$postId/'
+      | '../../invoices/'
+      | '../../invoices/$invoiceId/'
+      | '../../invoices/$invoiceId/edit/'
+      | '../../invoices/$invoiceId/details/'
+      | '../../invoices/$invoiceId/details/$detailId/'
+      | '../../invoices/$invoiceId/details/$detailId/lines/'
+      | undefined
+    >()
 })
 
 test('linkOptions', () => {

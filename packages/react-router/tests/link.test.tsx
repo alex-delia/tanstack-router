@@ -48,11 +48,11 @@ beforeEach(() => {
     disconnect: ioDisconnectMock,
   })
   vi.stubGlobal('IntersectionObserver', io)
+  window.history.replaceState(null, 'root', '/')
 })
 
 afterEach(() => {
   vi.resetAllMocks()
-  window.history.replaceState(null, 'root', '/')
   cleanup()
 })
 
@@ -1247,7 +1247,9 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postLink = await screen.findByRole('link', { name: 'To first post' })
+    const postLink = await screen.findByRole('link', {
+      name: 'To first post',
+    })
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
@@ -4342,5 +4344,70 @@ describe('search middleware', () => {
     expect(postsLinkSearch.size).toBe(1)
     expect(postsLinkSearch.get('root')).toBe('abc')
     expect(postsLink).toHaveAttribute('data-status', 'active')
+  })
+
+  describe('reloadDocument', () => {
+    test('link to /posts with params', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <>
+              <h1>Index</h1>
+              <Link
+                to="/posts/$postId"
+                params={{ postId: 'id1' }}
+                reloadDocument={true}
+                data-testid="link-to-post-1"
+              >
+                To first post
+              </Link>
+            </>
+          )
+        },
+      })
+
+      const PostsComponent = () => {
+        return (
+          <>
+            <h1>Posts</h1>
+            <Link to="/">Index</Link>
+            <Outlet />
+          </>
+        )
+      }
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'posts',
+        component: PostsComponent,
+      })
+
+      const PostComponent = () => {
+        const params = useParams({ strict: false })
+        return <span>Params: {params.postId}</span>
+      }
+
+      const postRoute = createRoute({
+        getParentRoute: () => postsRoute,
+        path: '$postId',
+        component: PostComponent,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          postsRoute.addChildren([postRoute]),
+        ]),
+      })
+
+      render(<RouterProvider router={router} />)
+
+      const postLink = await screen.findByTestId('link-to-post-1')
+
+      expect(postLink).toHaveAttribute('href', '/posts/id1')
+    })
   })
 })

@@ -16,8 +16,7 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import type { ParsedLocation } from '@tanstack/router-core'
-import type { AnyRoute } from './route'
+import type { AnyRoute, ParsedLocation } from '@tanstack/router-core'
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -142,12 +141,16 @@ function OnRendered() {
       key={router.state.resolvedLocation?.state.key}
       suppressHydrationWarning
       ref={(el) => {
-        if (el) {
+        if (
+          el &&
+          (prevLocationRef.current === undefined ||
+            prevLocationRef.current.href !==
+              router.state.resolvedLocation?.href)
+        ) {
           router.emit({
             type: 'onRendered',
             ...getLocationChangeInfo(router.state),
           })
-        } else {
           prevLocationRef.current = router.state.resolvedLocation
         }
       }}
